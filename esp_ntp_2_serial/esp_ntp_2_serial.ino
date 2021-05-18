@@ -23,13 +23,14 @@
   #include <WiFi.h>         
   #include <time.h>
 #endif
+#include <coredecls.h>  // ! optional settimeofday_cb() callback to check on server
 
 // The file "secrets.h" has to be placed in the sketchbook libraries folder
 // in a folder named "Secrets" and must contain your secrets e.g.:
 // const char *MY_WIFI_SSID = "mySSID"; const char *MY_WIFI_PASSWORD = "myPASS";
 #define USE_SECRETS
 #define DEBUG
-#define HSERIAL Serial2 
+#define HSERIAL Serial1 
 
 /****** WiFi and network settings ******/
 #ifdef USE_SECRETS
@@ -71,6 +72,16 @@ void init_ntp_time();             // init NTP time: call this before the WiFi co
 void get_time();                  // epoch to tm structure and update global struct
 void print_my_time_struct();      // print my global time structure
 
+// ! optional  callback function to check if NTP server called
+void time_is_set(bool from_sntp /* <= this parameter is optional */) {  
+  Serial.println("The NTP server was called!");
+}
+
+// ! optional change here if you want another NTP polling interval (default 1h)
+uint32_t sntp_update_delay_MS_rfc_not_less_than_15000 () {
+  return 4 * 60 * 60 * 1000UL; // every 4 hours
+}
+
 void setup() {
 #ifdef   DEBUG
   Serial.begin(115200);  
@@ -78,6 +89,7 @@ void setup() {
   Serial.println("\nHello");
 #endif    
   HSERIAL.begin(115200);
+  settimeofday_cb(time_is_set); // ! optional  callback function to check if NTP server called
   init_ntp_time();
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -86,7 +98,7 @@ void setup() {
   #ifdef   DEBUG
     Serial.print ( "." );
   #endif  
-  }
+  }  
   get_time();
   #ifdef   DEBUG  
     Serial.println("\nConnected to SSID " + WiFi.SSID() + " with IP " + 
@@ -103,8 +115,8 @@ void loop() {
   //print_my_time_struct();
   Serial.println(" " + my.datetime);
 #endif  
-  HSERIAL.print('T' + my.datetime + '\n');  
-  delay(1000);
+  HSERIAL.print('T' + now + '\n');  
+  delay(10000);
 }
 
 // init NTP time: call this before the WiFi connect!
